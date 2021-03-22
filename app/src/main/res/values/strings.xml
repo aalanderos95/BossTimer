@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">BossTimer</string>
+    <string name="new_notification">NOTIFICACION RECIVIDA</string>
+</resources>
