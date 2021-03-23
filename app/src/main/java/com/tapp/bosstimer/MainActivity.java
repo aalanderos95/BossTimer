@@ -5,9 +5,12 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -24,8 +27,10 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
+import com.tapp.bosstimer.Clases.mainAlertas;
 import com.tapp.bosstimer.Helpers.AlarmReceiver;
 import com.tapp.bosstimer.Utilidades.Servicios;
+import com.tapp.bosstimer.Utilidades.Utilidades;
 import com.tapp.bosstimer.Utilidades.apiBoss;
 import com.tapp.bosstimer.Utilidades.apiBosses;
 
@@ -50,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private Retrofit retro;
 
     private List<apiBoss> bossesList;
+    private List<mainAlertas> alertasList;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         Bundle bundles = getIntent().getExtras();
         CargarAdapter cargarAdapter = new CargarAdapter(service,requestBosses,retro);
         cargarAdapter.execute();
-        SqliteDbHelper cnn = new SqliteDbHelper(this,"bosstimer",null,1);
+        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
         Log.d("SERVICIO","bundles" + bundles);
         if(bundles != null) {
             Log.d("SERVICIO","bundles");
@@ -84,8 +90,57 @@ public class MainActivity extends AppCompatActivity {
                 abrirInformacion(boss, descripcion);
             }
         }
+        alertasList = new ArrayList<>();
+        obtenerAlertas();
+
     }
 
+    private void obtenerAlertas() {
+        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
+        SQLiteDatabase db = cnn.getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT NOTI."+ Utilidades.ID +", P."+ Utilidades.Nombre+ ", B."+ Utilidades.Nombre +" " +
+                ", NOTI."+Utilidades.Imagen+ ", NOTI."+ Utilidades.Hour+", NOTI."+Utilidades.Min +
+                "FROM "+Utilidades.TABLA_NOTIFICACIONES +"AS NOTI" +
+                " INNER JOIN "+ Utilidades.TABLA_PLAYERS +" AS P ON P."+ Utilidades.ID + " = NOTI." + Utilidades.PlayerID
+                +" INNER JOIN "+ Utilidades.TABLA_BOSS + " AS B ON B."+ Utilidades.ID +" = NOTI."+ Utilidades.BossID                , null);
+        if (c.moveToFirst()){
+            do {
+                // Passing values
+                int id = c.getInt(0);
+                String nombrePlayer = c.getString(1);
+                String NombreBoss = c.getString(2);
+                String ImagenBoss = c.getString(3);
+                String Hour = c.getString(4);
+                String Min = c.getString(5);
+                alertasList.add(new mainAlertas(id,nombrePlayer, NombreBoss,  Hour, Min,ImagenBoss));
+                // Do something Here with values
+            } while(c.moveToNext());
+        }
+        c.close();
+        db.close();
+    }
+
+    private void llenarAdapter(){
+
+    }
+    private void agregarAlerta(int idBoss, int idPlayer, String hour, String min)
+    {
+        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
+        SQLiteDatabase db = cnn.getReadableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(Utilidades.BossID, idBoss);
+        values.put(Utilidades.PlayerID, idPlayer);
+        values.put(Utilidades.Hour, hour);
+        values.put(Utilidades.Min, min);
+
+        Long id = db.insert(Utilidades.TABLA_NOTIFICACIONES, Utilidades.ID, values);
+    }
+
+    private void obtenerInformacion()
+    {
+
+    }
     private void abrirInformacion(String title, String descripcion) {
         AlertDialog.Builder mBuilder = new AlertDialog.Builder(MainActivity.this);
         View mview = getLayoutInflater().inflate(R.layout.informacion_layout, null);
