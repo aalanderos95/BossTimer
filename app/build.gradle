@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
 }
-def WEBServiceBaseURL='"https://mexiplayer.com/bosstimer"'
+def WEBServiceBaseURL='"http://51.79.50.217/bosstimer/"'
 android {
     compileSdkVersion 29
     buildToolsVersion "30.0.2"
