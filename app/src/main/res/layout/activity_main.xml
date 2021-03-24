@@ -35,9 +35,17 @@
 
     </LinearLayout>
 
-    <GridView
+    <androidx.recyclerview.widget.RecyclerView
         android:layout_weight="1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/timersDefinidos"></GridView>
+        android:id="@+id/rvAlertas"></androidx.recyclerview.widget.RecyclerView>
+
+    <Button
+        android:layout_gravity="center"
+        android:text="DETENER ALARMAS"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/detenerAlarmas"
+        ></Button>
 </LinearLayout>

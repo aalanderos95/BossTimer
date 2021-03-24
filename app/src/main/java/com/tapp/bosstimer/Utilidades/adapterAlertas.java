@@ -1,5 +1,6 @@
 package com.tapp.bosstimer.Utilidades;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,8 +51,18 @@ public class adapterAlertas extends RecyclerView.Adapter<adapterAlertas.AlertasV
     }
 
     @Override
-    public void onBindViewHolder(AlertasViewHolder holder, int position) {
-        
+    public void onBindViewHolder(adapterAlertas.AlertasViewHolder holder, int position) {
+        //viewHolder.imagen.setImageResource(items.get(i).getImagen());
+        holder.nombreBoss.setText(mListAlertas.get(position).getBoss());
+        holder.nombrePlayer.setText(mListAlertas.get(position).getPlayer());
+        //viewHolder.imagen.setImageURI(Uri.parse(items.get(i).getImagen()));
+        String urlFinal = mListAlertas.get(position).getImagen();
+        Log.e("SERVICIO","imagen:" + urlFinal);
+        //Rect rect = new Rect(viewHolder.imagen.getLeft(),viewHolder.imagen.getTop(),viewHolder.imagen.getRight(),viewHolder.imagen.getBottom());
+        if(urlFinal != "") {
+            Picasso.get().load(urlFinal).into(holder.imagen);
+        }
+        holder.tiempoSonara.setText("Definida a las "+mListAlertas.get(position).getHour()+":"+mListAlertas.get(position).getMin());
     }
 
     @Override

@@ -9,16 +9,24 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.BitmapFactory;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.text.format.Time;
 
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.tapp.bosstimer.MainActivity;
 import com.tapp.bosstimer.R;
+import com.tapp.bosstimer.SqliteDbHelper;
+import com.tapp.bosstimer.Utilidades.Utilidades;
 
 public class NotificationService extends IntentService {
 
@@ -26,7 +34,7 @@ public class NotificationService extends IntentService {
     private PendingIntent pendingIntent;
     private static int NOTIFICATION_ID = 1;
     Notification notification;
-
+    private MediaPlayer player;
 
     public NotificationService(String name) {
         super(name);
@@ -39,6 +47,8 @@ public class NotificationService extends IntentService {
     @TargetApi(Build.VERSION_CODES.O)
     @Override
     protected void onHandleIntent(Intent intent2) {
+        deleteNotificacion();
+        Utilidades.IniciarAlarma(this);
         String NOTIFICATION_CHANNEL_ID = getApplicationContext().getString(R.string.app_name);
         Context context = this.getApplicationContext();
         notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -82,9 +92,7 @@ public class NotificationService extends IntentService {
                     .setContentText(message)
                     .setLargeIcon(BitmapFactory.decodeResource(res, R.mipmap.ic_launcher))
                     .setDefaults(Notification.DEFAULT_ALL)
-                    .setAutoCancel(true)
                     .setSound(soundUri)
-
                     .setContentIntent(pendingIntent)
                     .setVibrate(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
             Notification notification = builder.build();
@@ -98,10 +106,26 @@ public class NotificationService extends IntentService {
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setLargeIcon(BitmapFactory.decodeResource(res, R.mipmap.ic_launcher))
                     .setSound(soundUri)
-                    .setAutoCancel(true)
                     .setContentTitle(getString(R.string.app_name)).setCategory(Notification.CATEGORY_SERVICE)
                     .setContentText(message).build();
             notificationManager.notify(NOTIFICATION_ID, notification);
         }
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+    }
+
+    private void deleteNotificacion()
+    {
+        Time today = new Time(Time.getCurrentTimezone());
+        today.setToNow();
+        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);SQLiteDatabase db = cnn.getReadableDatabase();
+
+        db.execSQL("DELETE FROM "+Utilidades.TABLA_NOTIFICACIONES + " WHERE " + Utilidades.Hour + " = " +today.HOUR
+        + " AND " + Utilidades.Min + " = " + today.MINUTE);
+        db.close();
     }
 }

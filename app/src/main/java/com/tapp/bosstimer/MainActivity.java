@@ -3,6 +3,7 @@ package com.tapp.bosstimer;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.AlarmManager;
@@ -41,6 +42,7 @@ import com.tapp.bosstimer.Clases.mainPlayers;
 import com.tapp.bosstimer.Helpers.AlarmReceiver;
 import com.tapp.bosstimer.Utilidades.Servicios;
 import com.tapp.bosstimer.Utilidades.Utilidades;
+import com.tapp.bosstimer.Utilidades.adapterAlertas;
 import com.tapp.bosstimer.Utilidades.adapterBosses;
 import com.tapp.bosstimer.Utilidades.apiBoss;
 import com.tapp.bosstimer.Utilidades.apiBosses;
@@ -60,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
     private String boss;
     private String characterName ;
+    private Spinner spinPlayer;
     private MediaPlayer player;
     private AlertDialog modalInformacion;
     private AlertDialog modalPlayers;
@@ -88,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
                 characterName = bundles.getString("CHAR", "");
 
                 String descripcion = "Ya puedes matarlo con tu character: " + characterName;
-                Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                /*Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
                 if (alarmSound == null) {
                     alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
                     if(alarmSound == null)
@@ -102,11 +105,13 @@ public class MainActivity extends AppCompatActivity {
                 int volumeLevel=audioManager.getStreamVolume(AudioManager.STREAM_ALARM);
                 player.setVolume(volumeLevel,volumeLevel);
                 player.start();
-                abrirInformacion(boss, descripcion);
+                abrirInformacion(boss, descripcion);*/
+
             }
         }
         listaPlayers = new ArrayList<>();
         alertasList = new ArrayList<>();
+        //truncateTable();
         obtenerAlertas();
         recargarListaPlayers();
 
@@ -117,16 +122,28 @@ public class MainActivity extends AppCompatActivity {
                 SeleccionaBoss();
             }
         });
+
+        Button detenerAlarma = findViewById(R.id.detenerAlarmas);
+        detenerAlarma.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(Utilidades.player!= null)
+                {
+                    obtenerAlertas();
+                    Utilidades.player.stop();
+                }
+            }
+        });
     }
 
     private void obtenerAlertas() {
+        alertasList = new ArrayList<>();
         SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
         SQLiteDatabase db = cnn.getReadableDatabase();
-        Cursor c = db.rawQuery("SELECT NOTI."+ Utilidades.ID +", P."+ Utilidades.Nombre+ ", B."+ Utilidades.Nombre +" " +
+        Cursor c = db.rawQuery("SELECT NOTI."+ Utilidades.ID +", P."+ Utilidades.Nombre+ ", NOTI."+Utilidades.BossID +
                 ", NOTI."+Utilidades.Imagen+ ", NOTI."+ Utilidades.Hour+", NOTI."+Utilidades.Min +
                 " FROM "+Utilidades.TABLA_NOTIFICACIONES +" AS NOTI" +
-                " INNER JOIN "+ Utilidades.TABLA_PLAYERS +" AS P ON P."+ Utilidades.ID + " = NOTI." + Utilidades.PlayerID
-                +" INNER JOIN "+ Utilidades.TABLA_BOSS + " AS B ON B."+ Utilidades.ID +" = NOTI."+ Utilidades.BossID                , null);
+                " INNER JOIN "+ Utilidades.TABLA_PLAYERS +" AS P ON P."+ Utilidades.ID + " = NOTI." + Utilidades.PlayerID                 , null);
         if (c.moveToFirst()){
             do {
                 // Passing values
@@ -142,29 +159,19 @@ public class MainActivity extends AppCompatActivity {
         }
         c.close();
         db.close();
+        llenarAdapter();
     }
 
-    private void llenarAdapter(){
-
-    }
-    private void agregarAlerta(int idBoss, int idPlayer, String hour, String min)
-    {
-        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
-        SQLiteDatabase db = cnn.getReadableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(Utilidades.BossID, idBoss);
-        values.put(Utilidades.PlayerID, idPlayer);
-        values.put(Utilidades.Hour, hour);
-        values.put(Utilidades.Min, min);
-
-        Long id = db.insert(Utilidades.TABLA_NOTIFICACIONES, Utilidades.ID, values);
+    private void llenarAdapter() {
+        adapterAlertas adapter = new adapterAlertas(alertasList);
+        RecyclerView rvAlertas = (RecyclerView) findViewById(R.id.rvAlertas);
+        rvAlertas.setHasFixedSize(true);
+        //RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
+        rvAlertas.setLayoutManager(layoutManager);
+        rvAlertas.setAdapter(adapter);
     }
 
-    private void obtenerInformacion()
-    {
-
-    }
     private void abrirInformacion(String title, String descripcion) {
         AlertDialog.Builder mBuilder = new AlertDialog.Builder(MainActivity.this);
         View mview = getLayoutInflater().inflate(R.layout.informacion_layout, null);
@@ -178,7 +185,9 @@ public class MainActivity extends AppCompatActivity {
         btnCerrar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                player.stop();
+                if(Utilidades.player != null) {
+                    Utilidades.player.stop();
+                }
                 modalInformacion.dismiss();
             }
         });
@@ -210,12 +219,20 @@ public class MainActivity extends AppCompatActivity {
                 SQLiteDatabase db = cnn.getReadableDatabase();
 
                 ContentValues values = new ContentValues();
+                if( editNombre.getText().toString().isEmpty())
+                {
+                    Toast.makeText(MainActivity.this, "Debes proporcionar un nombre.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 values.put(Utilidades.Nombre, editNombre.getText().toString());
 
                 Long id = db.insert(Utilidades.TABLA_PLAYERS, Utilidades.ID, values);
+                Log.d("SERVICIOS","ID"+id);
                 db.close();
                 recargarListaPlayers();
                 modalPlayers.dismiss();
+                spinnerAdapter adapterPlayer = new spinnerAdapter(MainActivity.this, listaPlayers);
+                spinPlayer.setAdapter(adapterPlayer);
             }
         });
         mBuilder.setView(mview);
@@ -225,7 +242,15 @@ public class MainActivity extends AppCompatActivity {
             modalPlayers.show();
         }
     }
+    private void truncateTable()
+    {
+        SqliteDbHelper cnn = new SqliteDbHelper(MainActivity.this, Utilidades.DB,null,1);
+        SQLiteDatabase db = cnn.getReadableDatabase();
 
+
+        db.execSQL("DELETE FROM "+Utilidades.TABLA_NOTIFICACIONES);
+        db.close();
+    }
     private void SeleccionaBoss(){
         AlertDialog.Builder mBuilder = new AlertDialog.Builder(MainActivity.this);
         View mview = getLayoutInflater().inflate(R.layout.agregar_layout, null);
@@ -265,23 +290,6 @@ public class MainActivity extends AppCompatActivity {
             lyBosses.addView(recycler);
         }
 
-
-        btnGuardar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                /*//REGISTRAR NUEVO PLAYER
-                SqliteDbHelper cnn = new SqliteDbHelper(MainActivity.this, Utilidades.DB,null,1);
-                SQLiteDatabase db = cnn.getReadableDatabase();
-
-                ContentValues values = new ContentValues();
-                values.put(Utilidades.Nombre, editNombre.getText().toString());
-
-                Long id = db.insert(Utilidades.TABLA_PLAYERS, Utilidades.ID, values);
-                db.close();
-                recargarListaPlayers();
-                modalPlayers.dismiss();*/
-            }
-        });
         mBuilder.setView(mview);
         modalBoss = mBuilder.create();
         // modalRating.setCancelable(false);
@@ -297,21 +305,23 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout lyAlertas = mview.findViewById(R.id.lyAlertas);
         lyAlertas.setVisibility(View.VISIBLE);
         ImageView btnCerrar = mview.findViewById(R.id.btnCerrar);
+        ImageView btnAgregarPlayer = mview.findViewById(R.id.agregarPlayer);
         btnCerrar.setVisibility(View.VISIBLE);
         Button btnGuardar = mview.findViewById(R.id.btnGuardar);
         TextView txtTitulo = mview.findViewById(R.id.txtTitle);
         TextView txtBossSeleccionado = mview.findViewById(R.id.txtBossSeleccionado);
         txtBossSeleccionado.setText(bossName);
-        Spinner spinPlayer = mview.findViewById(R.id.spinPlayers);
+        spinPlayer = mview.findViewById(R.id.spinPlayers);
         txtTitulo.setText("Agregar Nueva Alerta");
 
         spinnerAdapter adapterPlayer = new spinnerAdapter(MainActivity.this, listaPlayers);
         spinPlayer.setAdapter(adapterPlayer);
-        final int[] PlayerID = {0};
+        final String[] PlayerID = new String[2];
         spinPlayer.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                PlayerID[0] = listaPlayers.get(position).getID();
+                PlayerID[0] = String.valueOf(listaPlayers.get(position).getID());
+                PlayerID[1] = listaPlayers.get(position).getNombre();
             }
 
             @Override
@@ -325,12 +335,18 @@ public class MainActivity extends AppCompatActivity {
                 modalAlertas.dismiss();
             }
         });
+        btnAgregarPlayer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AgregarPlayer();
+            }
+        });
         btnGuardar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //REGISTRAR NUEVA ALERTA
                 String urlFinal = "";
-                urlFinal = BuildConfig.SERVER_URL+"Bosses/"+bossName.replace(" ","_") + ".gif";
+                urlFinal = BuildConfig.SERVER_URL+"Bosses/"+bossName.toLowerCase().replace(" ","_") + ".gif";
 
                 SqliteDbHelper cnn = new SqliteDbHelper(MainActivity.this, Utilidades.DB,null,1);
                 SQLiteDatabase db = cnn.getReadableDatabase();
@@ -339,10 +355,18 @@ public class MainActivity extends AppCompatActivity {
                 Calendar calendar = Calendar.getInstance();
                 calendar.set(Calendar.HOUR_OF_DAY, today.hour);
                 calendar.set(Calendar.MINUTE, today.minute);
+                Log.d("SERVICIO", "TIME" +calendar.getTimeInMillis());
+
+                //calendar.add(Calendar.HOUR,hours);
+                calendar.add(Calendar.MINUTE, 1);
                 int hora = today.hour;
-                int minutos = today.minute;
-                String hora_programada = new StringBuilder().append(hora).append(":0").append(minutos) + " hrs";
-                Toast.makeText(getApplicationContext(), "Tarea programada a las " + hora_programada.toString(), Toast.LENGTH_SHORT).show();
+                int minutos = today.minute+1;
+                String appendMin = ":";
+                if(String.valueOf(minutos).length() == 1)
+                    appendMin += "0";
+
+                String hora_programada = new StringBuilder().append(hora).append(appendMin).append(minutos) + " hrs";
+                Toast.makeText(getApplicationContext(), "Alerta programada a las " + hora_programada.toString(), Toast.LENGTH_SHORT).show();
                 ContentValues values = new ContentValues();
                 values.put(Utilidades.BossID, bossName);
                 values.put(Utilidades.PlayerID, PlayerID[0]);
@@ -352,18 +376,10 @@ public class MainActivity extends AppCompatActivity {
 
                 Long id = db.insert(Utilidades.TABLA_NOTIFICACIONES, Utilidades.ID, values);
                 db.close();
-                recargarListaPlayers();
-                modalPlayers.dismiss();
 
-                /*setAlarm(id, calendar.getTimeInMillis(),MainActivity.this);
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        finish();
-                    }
-                },2000);
-
-                /**/
+                setAlarm(Integer.parseInt(String.valueOf(id)), calendar.getTimeInMillis(),MainActivity.this,
+                         PlayerID[1],bossName);
+                obtenerAlertas();
             }
         });
         mBuilder.setView(mview);
@@ -374,7 +390,23 @@ public class MainActivity extends AppCompatActivity {
             modalAlertas.show();
         }
     }
+    private void setAlarm(int i, long timestamp, Context ctx, String characterName, String boss){
+        AlarmManager alarmManager = (AlarmManager) ctx.getSystemService(ALARM_SERVICE);
+        Intent alarmIntent = new Intent(ctx, AlarmReceiver.class);
+        alarmIntent.putExtra("CHAR",characterName);
+        alarmIntent.putExtra("BOSS",boss);
+        PendingIntent pendingIntent;
+        pendingIntent = PendingIntent.getBroadcast(ctx, i, alarmIntent, PendingIntent.FLAG_ONE_SHOT);
 
+        alarmIntent.setData((Uri.parse("custom://"+System.currentTimeMillis())));
+        alarmManager.set(AlarmManager.RTC_WAKEUP, timestamp,pendingIntent);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                modalAlertas.dismiss();
+            }
+        },2000);
+    }
     private void recargarListaPlayers()
     {
         listaPlayers = new ArrayList<>();
@@ -395,8 +427,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
-
-
 
     //ASYNC
 
