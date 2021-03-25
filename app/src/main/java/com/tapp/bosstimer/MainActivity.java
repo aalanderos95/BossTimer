@@ -25,17 +25,20 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.text.format.Time;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.squareup.picasso.Picasso;
 import com.tapp.bosstimer.Clases.mainAlertas;
 import com.tapp.bosstimer.Clases.mainPlayers;
@@ -48,9 +51,11 @@ import com.tapp.bosstimer.Utilidades.apiBoss;
 import com.tapp.bosstimer.Utilidades.apiBosses;
 import com.tapp.bosstimer.Utilidades.spinnerAdapter;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -63,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private String boss;
     private String characterName ;
     private Spinner spinPlayer;
+    private Spinner spinPlayersPrincipal;
     private MediaPlayer player;
     private AlertDialog modalInformacion;
     private AlertDialog modalPlayers;
@@ -74,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
     private List<mainPlayers> listaPlayers;
     private List<apiBoss> bossesList;
     private List<mainAlertas> alertasList;
+    private RecyclerView rvAlertas;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
         Bundle bundles = getIntent().getExtras();
         CargarAdapter cargarAdapter = new CargarAdapter(service,requestBosses,retro);
         cargarAdapter.execute();
-        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
+        SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,2);
         Log.d("SERVICIO","bundles" + bundles);
         if(bundles != null) {
             Log.d("SERVICIO","bundles");
@@ -110,9 +117,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         listaPlayers = new ArrayList<>();
+        listaPlayers.add(new mainPlayers(0,"Selecciona un player",BuildConfig.SERVER_URL+"Tibia_icon.png"));
         alertasList = new ArrayList<>();
         //truncateTable();
-        obtenerAlertas();
         recargarListaPlayers();
 
         ImageView btnAgregarAlerta = findViewById(R.id.agregarNuevaNotificacion);
@@ -134,14 +141,76 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-    }
 
+        spinPlayersPrincipal = findViewById(R.id.spinPlayersPrincipal);
+
+        spinnerAdapter adapterPlayer = new spinnerAdapter(MainActivity.this, listaPlayers);
+        spinPlayersPrincipal.setAdapter(adapterPlayer);
+        spinPlayersPrincipal.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(position == 0)
+                {
+                    adapterAlertas adapterAlertas = new adapterAlertas(MainActivity.this,alertasList);
+                    rvAlertas.setClickable(true);
+                    rvAlertas.setAdapter(adapterAlertas);
+                } else {
+                    obtenerDatosDePlayerSeleccionado(listaPlayers.get(position).getNombre().trim());
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+
+        obtenerAlertas();
+    }
+    private void obtenerDatosDePlayerSeleccionado(String playerName)
+    {
+        final List<mainAlertas> mainAlertas = new ArrayList<>();
+        /*if(categoriaID == 0){
+            adapter = new adaptervistaEmision(Utilidades.listaFullAnimes);
+            recycler.setClickable(true);
+            adapter.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    //Toast.makeText(getActivity(), "Seleccionamos: "+items2.get(recycler.getChildAdapterPosition(v)).getNombre(),
+                    //      Toast.LENGTH_SHORT).show();
+                    Utilidades.animeview = false;
+                    Utilidades.informacionView = false;
+                    Utilidades.capitulosView = false;
+                    Backend.LimpiaTodo();
+                    Intent intent = new Intent(getActivity(),vistaAnime.class);
+                    intent.putExtra("animeid", Utilidades.listaFullAnimes.get(recycler.getChildAdapterPosition(v)).getId());
+                    getActivity().startActivity(intent);
+
+                }
+            });
+        }
+        else
+        {*/
+            for(mainAlertas mainAlertas1 : alertasList){
+                if(mainAlertas1.getPlayer().trim().equals(playerName))
+                {
+                    mainAlertas.add(mainAlertas1);
+                }
+            }
+            adapterAlertas adapter = new adapterAlertas(this,mainAlertas);
+            rvAlertas.setClickable(true);
+
+        /*}*/
+
+        rvAlertas.setAdapter(adapter);
+    }
     private void obtenerAlertas() {
         alertasList = new ArrayList<>();
         SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
         SQLiteDatabase db = cnn.getReadableDatabase();
         Cursor c = db.rawQuery("SELECT NOTI."+ Utilidades.ID +", P."+ Utilidades.Nombre+ ", NOTI."+Utilidades.BossID +
-                ", NOTI."+Utilidades.Imagen+ ", NOTI."+ Utilidades.Hour+", NOTI."+Utilidades.Min +
+                ", NOTI."+Utilidades.Imagen+ ", NOTI."+ Utilidades.Hour+", NOTI."+Utilidades.Min + ", NOTI." +Utilidades.timeSpan +
+                ", NOTI."+Utilidades.HourMonster+
                 " FROM "+Utilidades.TABLA_NOTIFICACIONES +" AS NOTI" +
                 " INNER JOIN "+ Utilidades.TABLA_PLAYERS +" AS P ON P."+ Utilidades.ID + " = NOTI." + Utilidades.PlayerID                 , null);
         if (c.moveToFirst()){
@@ -153,7 +222,9 @@ public class MainActivity extends AppCompatActivity {
                 String ImagenBoss = c.getString(3);
                 String Hour = c.getString(4);
                 String Min = c.getString(5);
-                alertasList.add(new mainAlertas(id,nombrePlayer, NombreBoss,  Hour, Min,ImagenBoss));
+                String timeSpan = c.getString(6);
+                String HourMonsters = c.getString(7);
+                alertasList.add(new mainAlertas(id,nombrePlayer, NombreBoss,  Hour, Min,ImagenBoss, timeSpan, HourMonsters));
                 // Do something Here with values
             } while(c.moveToNext());
         }
@@ -163,8 +234,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void llenarAdapter() {
-        adapterAlertas adapter = new adapterAlertas(alertasList);
-        RecyclerView rvAlertas = (RecyclerView) findViewById(R.id.rvAlertas);
+        adapterAlertas adapter = new adapterAlertas(this,alertasList);
+        rvAlertas = (RecyclerView) findViewById(R.id.rvAlertas);
         rvAlertas.setHasFixedSize(true);
         //RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
@@ -233,6 +304,7 @@ public class MainActivity extends AppCompatActivity {
                 modalPlayers.dismiss();
                 spinnerAdapter adapterPlayer = new spinnerAdapter(MainActivity.this, listaPlayers);
                 spinPlayer.setAdapter(adapterPlayer);
+                spinPlayersPrincipal.setAdapter(adapterPlayer);
             }
         });
         mBuilder.setView(mview);
@@ -313,15 +385,25 @@ public class MainActivity extends AppCompatActivity {
         txtBossSeleccionado.setText(bossName);
         spinPlayer = mview.findViewById(R.id.spinPlayers);
         txtTitulo.setText("Agregar Nueva Alerta");
+        txtTitulo.setVisibility(View.GONE);
 
         spinnerAdapter adapterPlayer = new spinnerAdapter(MainActivity.this, listaPlayers);
         spinPlayer.setAdapter(adapterPlayer);
         final String[] PlayerID = new String[2];
+        final Boolean[] selecciono = {false};
         spinPlayer.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                PlayerID[0] = String.valueOf(listaPlayers.get(position).getID());
-                PlayerID[1] = listaPlayers.get(position).getNombre();
+                if(position == 0)
+                {
+                    Toast.makeText(MainActivity.this, "Debes seleccionar un player", Toast.LENGTH_SHORT).show();
+                    selecciono[0] = false;
+                }
+                else {
+                    selecciono[0] = true;
+                    PlayerID[0] = String.valueOf(listaPlayers.get(position).getID());
+                    PlayerID[1] = listaPlayers.get(position).getNombre();
+                }
             }
 
             @Override
@@ -344,6 +426,12 @@ public class MainActivity extends AppCompatActivity {
         btnGuardar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if(selecciono[0] == false)
+                {
+                    Snackbar.make(v, "Debes seleccionar un player", Snackbar.LENGTH_LONG)
+                            .setAction("Action", null).show();
+                    return;
+                }
                 //REGISTRAR NUEVA ALERTA
                 String urlFinal = "";
                 urlFinal = BuildConfig.SERVER_URL+"Bosses/"+bossName.toLowerCase().replace(" ","_") + ".gif";
@@ -353,19 +441,22 @@ public class MainActivity extends AppCompatActivity {
                 Time today = new Time(Time.getCurrentTimezone());
                 today.setToNow();
                 Calendar calendar = Calendar.getInstance();
-                calendar.set(Calendar.HOUR_OF_DAY, today.hour);
+                calendar.set(Calendar.HOUR, today.hour);
                 calendar.set(Calendar.MINUTE, today.minute);
-                Log.d("SERVICIO", "TIME" +calendar.getTimeInMillis());
 
-                //calendar.add(Calendar.HOUR,hours);
-                calendar.add(Calendar.MINUTE, 1);
-                int hora = today.hour;
-                int minutos = today.minute+1;
+                calendar.add(Calendar.HOUR,hours);
+                //calendar.add(Calendar.MINUTE, 1);
+                int hora = today.hour+hours;
+                int minutos = today.minute;
                 String appendMin = ":";
                 if(String.valueOf(minutos).length() == 1)
                     appendMin += "0";
 
-                String hora_programada = new StringBuilder().append(hora).append(appendMin).append(minutos) + " hrs";
+                SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+                String newTime = df.format(calendar.getTime());
+               // newTime += " " + tz.getDisplayName(false,TimeZone.SHORT);
+
+                String hora_programada = newTime; //new StringBuilder().append(hora).append(appendMin).append(minutos) + " hrs";
                 Toast.makeText(getApplicationContext(), "Alerta programada a las " + hora_programada.toString(), Toast.LENGTH_SHORT).show();
                 ContentValues values = new ContentValues();
                 values.put(Utilidades.BossID, bossName);
@@ -373,6 +464,8 @@ public class MainActivity extends AppCompatActivity {
                 values.put(Utilidades.Hour, hora);
                 values.put(Utilidades.Min, minutos);
                 values.put(Utilidades.Imagen, urlFinal);
+                values.put(Utilidades.timeSpan, newTime);
+                values.put(Utilidades.HourMonster, hours);
 
                 Long id = db.insert(Utilidades.TABLA_NOTIFICACIONES, Utilidades.ID, values);
                 db.close();
@@ -410,6 +503,7 @@ public class MainActivity extends AppCompatActivity {
     private void recargarListaPlayers()
     {
         listaPlayers = new ArrayList<>();
+        listaPlayers.add(new mainPlayers(0,"Selecciona un player",BuildConfig.SERVER_URL+"Tibia_icon.png"));
         SqliteDbHelper cnn = new SqliteDbHelper(this, Utilidades.DB,null,1);
         SQLiteDatabase db = cnn.getReadableDatabase();
         Cursor c = db.rawQuery("SELECT ID, NOMBRE FROM "+Utilidades.TABLA_PLAYERS, null);
@@ -424,8 +518,6 @@ public class MainActivity extends AppCompatActivity {
         }
         c.close();
         db.close();
-
-
     }
 
     //ASYNC

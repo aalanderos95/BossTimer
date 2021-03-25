@@ -7,8 +7,9 @@ public class mainAlertas {
     private String hour;
     private String min;
     private String imagen;
-
-    public mainAlertas(int id, String player, String boss, String hour, String min, String imagen)
+    private String timeSpan;
+    private String hourMonsters;
+    public mainAlertas(int id, String player, String boss, String hour, String min, String imagen, String timeSpan, String hourMonsters)
     {
         this.ID = id;
         this.player = player;
@@ -16,6 +17,8 @@ public class mainAlertas {
         this.hour = hour;
         this.min = min;
         this.imagen = imagen;
+        this.timeSpan = timeSpan;
+        this.hourMonsters = hourMonsters;
     }
 
     public int getID() {
@@ -40,5 +43,13 @@ public class mainAlertas {
 
     public String getPlayer() {
         return player;
+    }
+
+    public String getTimeSpan() {
+        return timeSpan;
+    }
+
+    public String getHourMonsters() {
+        return hourMonsters;
     }
 }
