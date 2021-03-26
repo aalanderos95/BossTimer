@@ -81,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
     private List<apiBoss> bossesList;
     private List<mainAlertas> alertasList;
     private RecyclerView rvAlertas;
+    private adapterAlertas adapterAlertas;
+    private adapterAlertas.miInterface listenerLEctura;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -151,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if(position == 0)
                 {
-                    adapterAlertas adapterAlertas = new adapterAlertas(MainActivity.this,alertasList);
+                    adapterAlertas adapterAlertas = new adapterAlertas(MainActivity.this,alertasList, listenerLEctura);
                     rvAlertas.setClickable(true);
                     rvAlertas.setAdapter(adapterAlertas);
                 } else {
@@ -166,7 +168,20 @@ public class MainActivity extends AppCompatActivity {
         });
 
         obtenerAlertas();
+
+        listenerLEctura = new adapterAlertas.miInterface() {
+            @Override
+            public void Resultado(String resultado,int id, int posicion) {
+                if(resultado.equals("ACTUALIZA")) {
+                    obtenerAlertas();
+                }
+
+            }
+        };
     }
+
+
+
     private void obtenerDatosDePlayerSeleccionado(String playerName)
     {
         final List<mainAlertas> mainAlertas = new ArrayList<>();
@@ -197,12 +212,12 @@ public class MainActivity extends AppCompatActivity {
                     mainAlertas.add(mainAlertas1);
                 }
             }
-            adapterAlertas adapter = new adapterAlertas(this,mainAlertas);
+            adapterAlertas = new adapterAlertas(this,mainAlertas, listenerLEctura);
             rvAlertas.setClickable(true);
 
         /*}*/
 
-        rvAlertas.setAdapter(adapter);
+        rvAlertas.setAdapter(adapterAlertas);
     }
     private void obtenerAlertas() {
         alertasList = new ArrayList<>();
@@ -234,13 +249,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void llenarAdapter() {
-        adapterAlertas adapter = new adapterAlertas(this,alertasList);
+        adapterAlertas = new adapterAlertas(this,alertasList, listenerLEctura);
         rvAlertas = (RecyclerView) findViewById(R.id.rvAlertas);
         rvAlertas.setHasFixedSize(true);
         //RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         rvAlertas.setLayoutManager(layoutManager);
-        rvAlertas.setAdapter(adapter);
+        rvAlertas.setAdapter(adapterAlertas);
     }
 
     private void abrirInformacion(String title, String descripcion) {

@@ -65,10 +65,15 @@ public class adapterAlertas extends RecyclerView.Adapter<adapterAlertas.AlertasV
             opciones = view.findViewById(R.id.textViewOptions);
         }
     }
+    public interface miInterface {
+        void Resultado(String resultado, int id, int posicion);
+    }
+    miInterface listenerInterface;
 
-    public adapterAlertas(Context contexto, List<mainAlertas> myDataSet) {
+    public adapterAlertas(Context contexto, List<mainAlertas> myDataSet, miInterface listener) {
         this.contexto = contexto;
         mListAlertas = myDataSet;
+        this.listenerInterface = listener;
     }
 
     @Override
@@ -133,7 +138,7 @@ public class adapterAlertas extends RecyclerView.Adapter<adapterAlertas.AlertasV
         }
         else {
             holder.mainLayout.setBackgroundColor(this.contexto.getResources().getColor(R.color.red));
-            holder.opciones.setVisibility(View.GONE);
+
         }
 
 
@@ -155,6 +160,8 @@ public class adapterAlertas extends RecyclerView.Adapter<adapterAlertas.AlertasV
                                 calendar.set(Calendar.HOUR_OF_DAY, today.hour);
                                 calendar.set(Calendar.MINUTE, today.minute);
                                 calendar.add(Calendar.HOUR,today.HOUR);
+                                Log.e("SERVICIO", "HORAS:"+Integer.parseInt(mListAlertas.get(position).getHourMonsters()));
+                                calendar.add(Calendar.HOUR, Integer.parseInt(mListAlertas.get(position).getHourMonsters()));
                                 SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
                                 String newTime = df.format(calendar.getTime());
 
@@ -166,7 +173,7 @@ public class adapterAlertas extends RecyclerView.Adapter<adapterAlertas.AlertasV
                                         Utilidades.ID + "="+mListAlertas.get(position).getID(),
                                         null);
                                 db.close();
-                                notifyDataSetChanged();
+                                listenerInterface.Resultado("ACTUALIZA",0,0);
                                 break;
                         }
                         return false;
